@@ -23,7 +23,8 @@ const Discord = require('discord.js'); // Import the discord.js module
 const token = process.env.TOKEN //Gets token from secure env file
 const client = new Discord.Client(); // Create an instance of a Discord client
 const prefix = '!'; //The prefix for bot commands
-const BannedRoles = ['admin', 'administrator', 'moderator', 'roles bot', '@everyone']; //Roles which the user cannot use
+const BannedRoles = ['admin', 'administrator', 'moderator', 'neil\'s bot', '@everyone']; //Roles which the user cannot use
+const AdminRole = 'Admin'
 const DownForMaintenance = false
 
 client.on('ready', () => { //Wait for the bot to be ready before anything happens
@@ -36,7 +37,7 @@ client.on('message', Message => { // Create an event listener for messages
     var Server = Message.guild; //The server the message was sent on
 
     if (MessageText.startsWith(prefix)) { //If the message begins with the prefix
-        if (DownForMaintenance == false) {
+        if (DownForMaintenance == false || IsUserAdmin(User)) {
 
             if (MessageText.startsWith(prefix + 'role ')) { //If the !role command is typed
 
@@ -67,7 +68,7 @@ client.on('message', Message => { // Create an event listener for messages
 
                     //4 - Check if the specified role is a forbidden role
                     if (BannedRoles.includes(RoleToAdd)) {
-                        Message.reply('You can\'t use that role'); //DEBUGGING
+                        Message.reply('Sorry, I\'m afraid I can\'t do that.'); //DEBUGGING
                     }
                     else {
                         //Message.reply('Role is not banned'); //DEBUGGING
@@ -85,24 +86,36 @@ client.on('message', Message => { // Create an event listener for messages
 
                             //6 - Add/remove role
                             User.roles.add(RoleIDToAdd)
-                            Message.reply(`You now have the role ${RoleToAdd}`) //DEBUGGING
+                            Message.reply(`I\'ve given you the role \"${RoleToAdd}\"`) //DEBUGGING
                         }
                     }
 
                 }
                 else {
-                    Message.reply('Role not found') //DEBUGGING
+                    Message.reply('I couldn\'t find that role.') //DEBUGGING
                 }
             }
             else if (MessageText.startsWith(`${prefix}help`)) {
                 Message.reply('Type !role <your role> to add that role to your profile.')
             }
-        } 
+        }
         else {
             Message.reply('I\'m currently down for maintenance at the moment. Please try again later')
         }
     }
 }
 );
+
+function IsUserAdmin(User) {
+    var UserRoles = User.roles.cache; //Create collection of user's roles
+    var UserAdmin = false;
+    UserRoles.forEach(role => {
+        if (role.name == AdminRole) {
+            UserAdmin = true;
+        }
+    }
+    )
+    return UserAdmin
+}
 
 client.login(token); //Logs the bot in using the token from https://discordapp.com/developers/applications/me
