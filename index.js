@@ -17,7 +17,7 @@ const client = new Discord.Client(); // Create an instance of a Discord client
 const app = express();
 app.get("/", (request, response) => {
     console.log(Date.now() + " Ping Received");
-    response.sendStatus(200).catch(err => console.error(err));
+    response.sendStatus(200);
 });
 app.listen(process.env.PORT);
 setInterval(() => {
@@ -45,7 +45,7 @@ client.on('message', Message => { // Create an event listener for messages
     if (MessageText.startsWith(prefix)) { //If the message begins with the prefix
         if (DownForMaintenance == false || IsUserAdmin(User)) { //If bot is not being upgraded
 
-            if (MessageText.startsWith(prefix + 'role ')) { //If the !role command is typed
+            if (MessageText.startsWith(prefix + 'role')) { //If the !role command is typed
 
                 //1 - Get role to add
                 var RoleToAdd = MessageText.slice('!role '.length, MessageText.length).toLowerCase(); //Gets all text typed after !role in lowercase
@@ -58,6 +58,7 @@ client.on('message', Message => { // Create an event listener for messages
                 RolesCache.forEach(role => {
                     if (role.name.toLowerCase() == RoleToAdd) {
                         RoleIDToAdd = role.id;
+                        RoleToAdd = role.name //Adds capitalised name
                         RoleFound = true;
                     }
                 }
@@ -67,7 +68,7 @@ client.on('message', Message => { // Create an event listener for messages
                 if (RoleFound) { //If the specified role exists
 
                     //4 - Check if the specified role is a forbidden role
-                    if (BannedRoles.includes(RoleToAdd)) {
+                    if (BannedRoles.includes(RoleToAdd.toLowerCase())) {
                         Message.reply('Sorry, I\'m afraid I can\'t do that.').catch(err => console.error(err));
                     }
                     else {
@@ -77,7 +78,7 @@ client.on('message', Message => { // Create an event listener for messages
 
                             //6 - Add/remove role
                             User.roles.remove(RoleIDToAdd).catch(err => console.error(err));
-                            Message.reply(`You no longer have the role ${RoleToAdd}`).catch(err => console.error(err));
+                            Message.reply(`You no longer have the role \"${RoleToAdd}\"`).catch(err => console.error(err));
                         }
                         else {
 
@@ -89,13 +90,34 @@ client.on('message', Message => { // Create an event listener for messages
 
                 }
                 else {
-                    Message.reply(`Sorry, I couldn\'t find that role. The following roles are available: ${GenerateRoleNamesList(Server).join(", ")}`).catch(err => console.error(err));
+                    const RoleMenu = new Discord.MessageEmbed()
+                        .setColor('ad1457')
+                        .setTitle('Role not found')
+                        .setDescription('Sorry, I couldn\'t find that role. The following roles are available: ')
+                        .addField('Type !role <rolename> to try again', `\n ${GenerateRoleNamesList(Server).join("\n")}`)
+                        .setTimestamp()
+                        .setFooter('Made by Neil');
+
+                    Message.reply(RoleMenu).catch(err => console.error(err));
                 }
             }
             else if (MessageText.startsWith(`${prefix}help`)) {
-                Message.reply(`Type !role <your role> to add or remove a role. The following roles are available: ${GenerateRoleNamesList(Server).join(", ")}`).catch(err => console.error(err));
+                const HelpMenu = new Discord.MessageEmbed()
+                    .setColor('ad1457')
+                    .setTitle('Help Menu')
+                    .setDescription('Here are the commands I respond to:')
+                    .addField('!help', 'Shows the help menu')
+                    .addField('!role', `Adds a role. The following roles are available: \n ${GenerateRoleNamesList(Server).join("\n")}\n Role names do not have to be case-sensitive`)
+                    .setTimestamp()
+                    .setFooter('Made by Neil');
+
+                Message.reply(HelpMenu).catch(err => console.error(err));
             }
-            else{
+
+            else if (MessageText.startsWith(`${prefix}shutdown`) && IsUserAdmin(User)) {            
+                Message.reply('Shutting down').then(process.exit(0)); //Shuts down when message is sent
+            }
+            else {
                 Message.reply('Sorry, I didn\'t recognise that command. Type !help to see what I can do').catch(err => console.error(err));
             }
         }
@@ -106,13 +128,17 @@ client.on('message', Message => { // Create an event listener for messages
 }
 );
 
+client.on("guildMemberAdd", (member) => { //New member has joined
+    member.guild.channels.find(c => c.name === "general").send(`Welcome, ${member.user.username}. `);
+  });
+
 process.on('uncaughtException', err => { //If an uncaught exception occurs
     console.error('There was an uncaught error', err)
     process.exit(1) //mandatory (as per the Node.js docs)
-  })
+})
 
 
-  ///////////////////////////////FUNCTIONS/////////////////////////////////////
+///////////////////////////////FUNCTIONS/////////////////////////////////////
 function IsUserAdmin(User) { //Checks to see if a user is an admin
     var UserRoles = User.roles.cache; //Create collection of user's roles
     var UserAdmin = false;
