@@ -14,22 +14,25 @@ const client = new Discord.Client(); // Create an instance of a Discord client
 
 
 ///////////////////////////////WEB PING/////////////////////////////////////
-const app = express();
-app.get("/", (request, response) => {
-    console.log(Date.now() + " Ping Received");
-    response.sendStatus(200);
-});
-app.listen(process.env.PORT);
-setInterval(() => {
-    http.get(`http://${process.env.PROJECT_DOMAIN}.glitch.me/`);
-}, 280000);
+//const app = express();
+//app.get("/", (request, response) => {
+//    console.log(Date.now() + " Ping Received");
+//    response.sendStatus(200);
+//});
+//app.listen(process.env.PORT);
+//setInterval(() => {
+//    http.get(`http://${process.env.PROJECT_DOMAIN}.glitch.me/`);
+//}, 280000);
 
 
 ///////////////////////////////SETTINGS/////////////////////////////////////
 const prefix = '!'; //The prefix for bot commands
 const BannedRoles = ['admin', 'administrator', 'moderator', 'neil\'s bot', '@everyone']; //Roles which the user cannot use
-const AdminRole = 'Admin' //The admin role for the server - case sensitive
-const DownForMaintenance = false
+const AdminRole = 'Admin'; //The admin role for the server - case sensitive
+const DownForMaintenance = false;
+const MainChannelName = 'general';
+const NumberEmojis = ["\u0031\u20E3", "\u0032\u20E3", "\u0033\u20E3", "\u0034\u20E3", "\u0035\u20E3", "\u0036\u20E3", "\u0037\u20E3", "\u0038\u20E3", "\u0039\u20E3"];
+//const NumberEmojis = ["\u0030\u20E3", "\u0031\u20E3", "\u0032\u20E3", "\u0033\u20E3", "\u0034\u20E3", "\u0035\u20E3", "\u0036\u20E3", "\u0037\u20E3", "\u0038\u20E3", "\u0039\u20E3"];
 
 
 ///////////////////////////////EVENTS/////////////////////////////////////
@@ -41,6 +44,7 @@ client.on('message', Message => { // Create an event listener for messages
     var MessageText = Message.content; //The content of the message sent
     var User = Message.member; //The member who sent the message
     var Server = Message.guild; //The server the message was sent on
+    var GeneralChannel = Server.channels.cache.find(c => c.name === MainChannelName) //General channel
 
     if (MessageText.startsWith(prefix)) { //If the message begins with the prefix
         if (DownForMaintenance == false || IsUserAdmin(User)) { //If bot is not being upgraded
@@ -84,13 +88,13 @@ client.on('message', Message => { // Create an event listener for messages
 
                             //6 - Add/remove role
                             User.roles.add(RoleIDToAdd).catch(err => console.error(err));
-                            Message.reply(`I\'ve given you the role \"${RoleToAdd}\"`).catch(err => console.error(err))
+                            Message.reply(`I\'ve given you the role \"${RoleToAdd}\"`).catch(err => console.error(err));
                         }
                     }
 
                 }
                 else {
-                    const RoleMenu = new Discord.MessageEmbed()
+                    var RoleMenu = new Discord.MessageEmbed()
                         .setColor('ad1457')
                         .setTitle('Role not found')
                         .setDescription('Sorry, I couldn\'t find that role. The following roles are available: ')
@@ -102,7 +106,7 @@ client.on('message', Message => { // Create an event listener for messages
                 }
             }
             else if (MessageText.startsWith(`${prefix}help`)) {
-                const HelpMenu = new Discord.MessageEmbed()
+                var HelpMenu = new Discord.MessageEmbed()
                     .setColor('ad1457')
                     .setTitle('Help Menu')
                     .setDescription('Here are the commands I respond to:')
@@ -114,9 +118,35 @@ client.on('message', Message => { // Create an event listener for messages
                 Message.reply(HelpMenu).catch(err => console.error(err));
             }
 
-            else if (MessageText.startsWith(`${prefix}shutdown`) && IsUserAdmin(User)) {            
+            else if (MessageText.startsWith(`${prefix}shutdown`) && IsUserAdmin(User)) {  // Admin shutdown 
                 Message.reply('Shutting down').then(process.exit(0)); //Shuts down when message is sent
             }
+
+            else if (MessageText.startsWith(`${prefix}poll `)) {
+                var PollOptions = MessageText.slice('!poll '.length, MessageText.length).split(',') //Gets all info in poll command
+                var PollQuestion = PollOptions[0];
+                PollOptions.reverse() //Removes first item in array by reversing, removing last item and then reversing
+                PollOptions.pop()
+                PollOptions.reverse()
+                PollOptions.forEach(option => {
+                    var OptionNumber = PollOptions.indexOf(option);
+                    PollOptions[OptionNumber] = `${NumberEmojis[OptionNumber]} - ${option}`; //Shifts array to the left
+                });
+
+                var PollMenu = new Discord.MessageEmbed()
+                    .setColor('ad1457')
+                    .setTitle(PollQuestion)
+                    .addField('Please pick one or more of the following options:', `${PollOptions.join("\n")}\n`)
+                    .setTimestamp()
+                    .setFooter('Made by Neil');
+
+                GeneralChannel.send(PollMenu)
+                    .then((Message) => { //Reacts to sent message
+                        Message.react(PollOptions.forEach(i => Message.react(NumberEmojis[PollOptions.indexOf(i)])))
+                    })
+                    .catch(err => console.error(err));
+            }
+
             else {
                 Message.reply('Sorry, I didn\'t recognise that command. Type !help to see what I can do').catch(err => console.error(err));
             }
@@ -129,8 +159,8 @@ client.on('message', Message => { // Create an event listener for messages
 );
 
 client.on("guildMemberAdd", (member) => { //New member has joined
-    member.guild.channels.find(c => c.name === "general").send(`Welcome, ${member.user.username}. `);
-  });
+    member.guild.channels.cache.find(c => c.name === MainChannelName).send(`Welcome, ${member.user.username}. `);
+});
 
 process.on('uncaughtException', err => { //If an uncaught exception occurs
     console.error('There was an uncaught error', err)
