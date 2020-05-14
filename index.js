@@ -26,14 +26,22 @@ const client = new Discord.Client(); // Create an instance of a Discord client
 
 
 ///////////////////////////////SETTINGS/////////////////////////////////////
-const prefix = '!'; //The prefix for bot commands
+
 const BannedRoles = ['admin', 'administrator', 'moderator', 'neil\'s bot', '@everyone']; //Roles which the user cannot use
 const AdminRole = 'Admin'; //The admin role for the server - case sensitive
 const DownForMaintenance = false;
 const MainChannelName = 'general';
+const InfoChannelName = 'information';
 const NumberEmojis = ["\u0031\u20E3", "\u0032\u20E3", "\u0033\u20E3", "\u0034\u20E3", "\u0035\u20E3", "\u0036\u20E3", "\u0037\u20E3", "\u0038\u20E3", "\u0039\u20E3"];
-//const NumberEmojis = ["\u0030\u20E3", "\u0031\u20E3", "\u0032\u20E3", "\u0033\u20E3", "\u0034\u20E3", "\u0035\u20E3", "\u0036\u20E3", "\u0037\u20E3", "\u0038\u20E3", "\u0039\u20E3"];
 
+///////////////////////////////COMMANDS/////////////////////////////////////
+const Prefix = '!'; //The prefix for bot commands
+const AddRemoveRole = `${Prefix}role `
+const ListRoles = `${Prefix}listroles`
+const Help = `${Prefix}help`
+const Shutdown = `${Prefix}shutdown`
+const Poll = `${Prefix}poll `
+const WelcomeUser = `${Prefix}welcome `
 
 ///////////////////////////////EVENTS/////////////////////////////////////
 client.on('ready', () => { //Wait for the bot to be ready before anything happens
@@ -46,13 +54,13 @@ client.on('message', Message => { // Create an event listener for messages
     var Server = Message.guild; //The server the message was sent on
     var GeneralChannel = Server.channels.cache.find(c => c.name === MainChannelName) //General channel
 
-    if (MessageText.startsWith(prefix)) { //If the message begins with the prefix
+    if (MessageText.startsWith(Prefix)) { //If the message begins with the prefix
         if (DownForMaintenance == false || IsUserAdmin(User)) { //If bot is not being upgraded
 
-            if (MessageText.startsWith(prefix + 'role')) { //If the !role command is typed
+            if (MessageText.startsWith(AddRemoveRole)) { //If the !role command is typed
 
                 //1 - Get role to add
-                var RoleToAdd = MessageText.slice('!role '.length, MessageText.length).toLowerCase(); //Gets all text typed after !role in lowercase
+                var RoleToAdd = MessageText.slice(AddRemoveRole.length, MessageText.length).toLowerCase(); //Gets all text typed after !role in lowercase
 
                 //2 - Get list of roles
                 Server.roles.fetch().catch(err => console.error(err)); //Fetch list of roles
@@ -105,25 +113,38 @@ client.on('message', Message => { // Create an event listener for messages
                     Message.reply(RoleMenu).catch(err => console.error(err));
                 }
             }
-            else if (MessageText.startsWith(`${prefix}help`)) {
+            else if (MessageText.toLowerCase() === Help) {
                 var HelpMenu = new Discord.MessageEmbed()
                     .setColor('ad1457')
                     .setTitle('Help Menu')
                     .setDescription('Here are the commands I respond to:')
                     .addField('!help', 'Shows the help menu')
-                    .addField('!role', `Adds a role. The following roles are available: \n ${GenerateRoleNamesList(Server).join("\n")}\n Role names do not have to be case-sensitive`)
+                    .addField('!role <role name>', 'Adds a role, or removes it if you already have it. Role names do not have to be case-sensitive')
+                    .addField('!listroles', 'Lists all the available roles on the server')
+                    .addField('!poll <question>, <option 1>, <option 2>, <etc>', 'Creates a poll in the #general channel.')
                     .setTimestamp()
                     .setFooter('Made by Neil');
 
                 Message.reply(HelpMenu).catch(err => console.error(err));
             }
 
-            else if (MessageText.startsWith(`${prefix}shutdown`) && IsUserAdmin(User)) {  // Admin shutdown 
+            else if (MessageText.toLowerCase() === ListRoles) {
+                var RoleMenu = new Discord.MessageEmbed()
+                    .setColor('ad1457')
+                    .setTitle('The following roles are available:')
+                    .addField('Type !role <rolename> to add/remove one of the following:', `\n ${GenerateRoleNamesList(Server).join("\n")}`)
+                    .setTimestamp()
+                    .setFooter('Made by Neil');
+
+                Message.reply(RoleMenu).catch(err => console.error(err));
+            }
+
+            else if (MessageText.toLowerCase() === Shutdown && IsUserAdmin(User)) {  // Admin shutdown 
                 Message.reply('Shutting down').then(process.exit(0)); //Shuts down when message is sent
             }
 
-            else if (MessageText.startsWith(`${prefix}poll `)) {
-                var PollOptions = MessageText.slice('!poll '.length, MessageText.length).split(',') //Gets all info in poll command
+            else if (MessageText.startsWith(Poll)) {
+                var PollOptions = MessageText.slice(Poll.length, MessageText.length).split(',') //Gets all info in poll command
                 var PollQuestion = PollOptions[0];
                 PollOptions.reverse() //Removes first item in array by reversing, removing last item and then reversing
                 PollOptions.pop()
@@ -147,6 +168,11 @@ client.on('message', Message => { // Create an event listener for messages
                     .catch(err => console.error(err));
             }
 
+            else if (MessageText.startsWith('!welcome ') && IsUserAdmin(User)) { //Admin manual welcome
+                var NewUser = MessageText.slice(WelcomeUser.length, MessageText.length);
+                GeneralChannel.send(`Welcome to the server, ${NewUser}! Check out the ${Server.channels.cache.find(c => c.name === InfoChannelName)} channel for more info. We now have a grand total of ${Server.memberCount} people in the server.`).catch(err => console.error(err));
+            }
+
             else {
                 Message.reply('Sorry, I didn\'t recognise that command. Type !help to see what I can do').catch(err => console.error(err));
             }
@@ -159,7 +185,8 @@ client.on('message', Message => { // Create an event listener for messages
 );
 
 client.on("guildMemberAdd", (member) => { //New member has joined
-    member.guild.channels.cache.find(c => c.name === MainChannelName).send(`Welcome, ${member.user.username}. `);
+    var Server = member.guild
+    Server.channels.cache.find(c => c.name === MainChannelName).send(`Welcome to the server, ${User}! Check out the ${Server.channels.cache.find(c => c.name === InfoChannelName)} channel for more info. We now have a grand total of ${Server.memberCount} people in the server.`).catch(err => console.error(err));
 });
 
 process.on('uncaughtException', err => { //If an uncaught exception occurs
@@ -193,4 +220,4 @@ function GenerateRoleNamesList(Server) { //Creates an array of the server roles 
 }
 
 
-client.login(token); //Logs the bot in using the token from https://discordapp.com/developers/applications/me
+client.login(token).catch(err => console.error(err)); //Logs the bot in using the token from https://discordapp.com/developers/applications/me
